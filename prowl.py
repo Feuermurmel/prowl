@@ -3,10 +3,6 @@
 import os, sys, argparse, json, re, getpass, socket, requests
 
 
-script_dir = os.path.dirname(os.path.realpath(__file__))
-terminal_notifier = os.path.join(script_dir, 'terminal-notifier.app/Contents/MacOS/terminal-notifier')
-
-
 def log(msg, *args):
 	print('{}: {}'.format(os.path.basename(sys.argv[0]), msg.format(*args)), file = sys.stderr)
 
@@ -82,8 +78,8 @@ def api_argument_type(value):
 def parse_args():
 	usage = '\n'.join([
 		'prowl --help',
-		'       prowl --set-api-key=<api-key>',
-		'       prowl [<options>] [[<event>] <description>]'])
+		'	   prowl --set-api-key=<api-key>',
+		'	   prowl [<options>] [[<event>] <description>]'])
 	
 	parser = argparse.ArgumentParser(description = 'Deliver a notification using Prowl for iOS.', usage = usage)
 	
@@ -118,51 +114,54 @@ def parse_args():
 	return args
 
 
-def main():
+def main(event, description, application, url, priority, api_key, set_api_key):
 	settings = Settings(os.path.join(os.path.expanduser('~'), 'opt/etc/prowl.json'))
-	args = parse_args()
-	
-	if args.set_api_key is None:
-		api_key = args.api_key
-		application = args.application
-		
+
+	if set_api_key is None:
+		api_key = api_key
+		application = application
+
 		if api_key is None:
 			api_key = settings.get('default-api-key')
-			
+
 			if api_key is None:
 				raise UserError('--api-key is mandatory if because default API key has been set.')
-		
+
 		if application is None:
 			application = '{}@{}'.format(getpass.getuser(), socket.gethostname())
-		
+
 		def iter_arguments():
 			yield 'apikey', api_key
 			yield 'application', application
-			
-			if args.url is not None:
-				yield 'url', args.url
-			
-			if args.event is not None:
-				yield 'event', args.event
-			
-			if args.description:
-				yield 'description', args.description
-			
-			if args.priority:
-				yield 'priority', args.priority
-		
-		response = requests.post('https://api.prowlapp.com/publicapi/add', dict(iter_arguments()))
-		
+
+			if url is not None:
+				yield 'url', url
+
+			if event is not None:
+				yield 'event', event
+
+			if description:
+				yield 'description', description
+
+			if priority:
+				yield 'priority', priority
+
+		response = requests.post(
+			'https://api.prowlapp.com/publicapi/add',
+			dict(iter_arguments()))
+
 		if not response.ok:
 			raise UserError('Error received from server: {}', response.content)
 	else:
-		settings.set('default-api-key', args.set_api_key)
+		settings.set('default-api-key', set_api_key)
 
-try:
-	main()
-except UserError as e:
-	log('Error: {}', e)
-	sys.exit(1)
-except KeyboardInterrupt:
-	log('Operation interrupted.')
-	sys.exit(2)
+
+def script_main():
+	try:
+		main(**vars(parse_args()))
+	except UserError as e:
+		log('Error: {}', e)
+		sys.exit(1)
+	except KeyboardInterrupt:
+		log('Operation interrupted.')
+		sys.exit(2)
