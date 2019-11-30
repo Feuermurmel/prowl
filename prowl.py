@@ -182,8 +182,8 @@ def main(event, description, application, url, priority, api_key, set_api_key):
             api_key = settings.get('default-api-key')
 
             if api_key is None:
-                raise UserError('--api-key is mandatory if because default '
-                                'API key has been set.')
+                raise UserError('--api-key is mandatory because the default '
+                                'API key has not been set.')
 
         if application is None:
             application = '{}@{}'.format(getpass.getuser(), socket.gethostname())
